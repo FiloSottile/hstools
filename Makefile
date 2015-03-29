@@ -1,6 +1,5 @@
 GO     ?= go
-GOPATH := $(CURDIR)
-GO     := env GOPATH="$(GOPATH)" $(GO)
+GO     := env GOPATH="$(CURDIR):$(GOPATH)" $(GO)
 
 montecarlo:
 	$(GO) install montecarlo
