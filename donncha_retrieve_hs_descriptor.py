@@ -11,8 +11,8 @@ from time import time
 from base64 import b32encode, b32decode
 from hashlib import sha1
 from struct import pack, unpack
-from stem.descriptor import parse_file, DocumentHandler
-from stem.descriptor.router_status_entry import RouterStatusEntryV3
+from stem.descriptor import DocumentHandler
+from stem.descriptor.remote import DescriptorDownloader
 import argparse
 from bisect import bisect_left
 import urllib
@@ -49,26 +49,28 @@ def rend_get_descriptor_id_bytes(service_id, secret_id_part):
   descriptor_id.update(secret_id_part)
   return descriptor_id.digest()
 
-def find_responsible_HSDir(descriptor_id, cached_consensus):
-  with open(cached_consensus, 'rb') as consensus_file:
-  # Processes the routers as we read them in. The routers refer to a document
-  # with an unset 'routers' attribute.
-    router_list = []
-    fingerprint_list = []
-    responsible_HSDirs = []
-    for router in parse_file(consensus_file, 'network-status-consensus-3 1.0', document_handler = DocumentHandler.ENTRIES):
-      if "HSDir" in router.flags:
-        # Inefficient but should be fine for the current number of routers
-        fingerprint_base32 = b32encode(router.fingerprint.decode("hex")).lower()
-        fingerprint_list.append(router.fingerprint.decode("hex"))
-        router_list.append( {'nickname': router.nickname, 'fingerprint_base32': fingerprint_base32, 'fingerprint': router.fingerprint, 'address': router.address, 'dir_port': router.dir_port, 'descriptor_id': descriptor_id })
+def find_responsible_HSDir(descriptor_id, consensus):
+  fingerprint_list = []
+  for _, router in consensus.routers.items():
+    if "HSDir" in router.flags:
+      fingerprint_list.append(router.fingerprint.decode("hex"))
+  fingerprint_list.sort()
+
+  descriptor_position = bisect_left(fingerprint_list, b32decode(descriptor_id, 1))
+
+  responsible_HSDirs = []
+  for i in range(0, 3):
+    fingerprint = fingerprint_list[descriptor_position + i]
+    router = consensus.routers[fingerprint.encode("hex").upper()]
+    responsible_HSDirs.append({
+      'nickname': router.nickname,
+      'fingerprint': router.fingerprint,
+      'address': router.address,
+      'dir_port': router.dir_port,
+      'descriptor_id': descriptor_id
+    })
     
-    # Get location descriptor id would be in router list
-    descriptor_position = bisect_left(fingerprint_list, b32decode(descriptor_id,1))
-    for i in range(0,3):
-      responsible_HSDirs.append(router_list[descriptor_position+i])
-      
-    return responsible_HSDirs
+  return responsible_HSDirs
 
 def main():
   REPLICAS = 2
@@ -78,12 +80,8 @@ def main():
                                                "directories. It can also try all the responsible nodes to" \
                                                "determine how many will correctly return the descriptor.")
   parser.add_argument('onion_address', help='The hidden service address - e.g. (idnxcnkne4qt76tg.onion)')
-  parser.add_argument("-d", "--decode", action="store_true",
-                  help="Should the introduction point list be decrypted - not implemented")
   parser.add_argument("-v", "--verbose", action="store_true",
                   help="Show responsible HSDir's and try retrieve descriptors")
-  parser.add_argument("-f", type=str, default='/var/lib/tor/cached-consensus',
-                  help="Location of cached-consenus file if not in /var/lib/tor. Must be readable by python user.")
   args = parser.parse_args()
   
   responsible_HSDirs = []
@@ -91,22 +89,33 @@ def main():
   if args.verbose:
     print "Running in verbose mode"
 
+  downloader = DescriptorDownloader()
+  consensus = downloader.get_consensus(document_handler = DocumentHandler.DOCUMENT).run()[0]
+
   service_id, tld = args.onion_address.split(".")
   if tld == 'onion' and len(service_id) == 16 and service_id.isalnum():   
       for replica in range(0, REPLICAS):
         descriptor_id = rend_compute_v2_desc_id(service_id, replica, time())
-        responsible_HSDirs.extend(find_responsible_HSDir(descriptor_id, args.f))
+        responsible_HSDirs.extend(find_responsible_HSDir(descriptor_id, consensus))
       
       # Loop through all the responsible HSDir's
       descriptor = ""
       for router in responsible_HSDirs:
         if (args.verbose == False) and descriptor:
           break
-            
-        f = urllib.urlopen('http://'+router['address']+':'+str(router['dir_port'])+'/tor/rendezvous2/'+router['descriptor_id'])
+
+        if not router['dir_port']: continue
+
+        url = 'http://'+router['address']+':'+str(router['dir_port'])+'/tor/rendezvous2/'+router['descriptor_id']
+
+        if args.verbose:
+          print url
+
+        f = urllib.urlopen(url)
         if args.verbose:
           if f.getcode() == 200:
             descriptor = f.read().decode('utf-8')
+          print b32decode(router['descriptor_id'], True).encode('hex')
           print str(f.getcode()) + '\t' + router['descriptor_id'] + '\t' + router['fingerprint'] + '\t' + router['nickname']
           
         else: # Loop until we find descriptor or error
