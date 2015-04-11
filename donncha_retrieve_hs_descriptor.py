@@ -15,7 +15,6 @@ from stem.descriptor import DocumentHandler
 from stem.descriptor.remote import DescriptorDownloader
 import argparse
 from bisect import bisect_left
-import urllib
 
 # When provided with a Tor hidden service 'service_id', this script should output
 # the predicted desc_id's which will be used to publish the HS descriptors for this
@@ -75,19 +74,9 @@ def find_responsible_HSDir(descriptor_id, consensus):
 def main():
   REPLICAS = 2
   
-  parser = argparse.ArgumentParser(description="This tool allows you to retrieve a copy of the raw hidden " \
-                                               "service descriptor from the responsible hidden service " \
-                                               "directories. It can also try all the responsible nodes to" \
-                                               "determine how many will correctly return the descriptor.")
+  parser = argparse.ArgumentParser()
   parser.add_argument('onion_address', help='The hidden service address - e.g. (idnxcnkne4qt76tg.onion)')
-  parser.add_argument("-v", "--verbose", action="store_true",
-                  help="Show responsible HSDir's and try retrieve descriptors")
   args = parser.parse_args()
-  
-  responsible_HSDirs = []
-  
-  if args.verbose:
-    print "Running in verbose mode"
 
   downloader = DescriptorDownloader()
   consensus = downloader.get_consensus(document_handler = DocumentHandler.DOCUMENT).run()[0]
@@ -96,36 +85,10 @@ def main():
   if tld == 'onion' and len(service_id) == 16 and service_id.isalnum():   
       for replica in range(0, REPLICAS):
         descriptor_id = rend_compute_v2_desc_id(service_id, replica, time())
-        responsible_HSDirs.extend(find_responsible_HSDir(descriptor_id, consensus))
-      
-      # Loop through all the responsible HSDir's
-      descriptor = ""
-      for router in responsible_HSDirs:
-        if (args.verbose == False) and descriptor:
-          break
+        print descriptor_id + '\t' + b32decode(descriptor_id, True).encode('hex')
+        for router in find_responsible_HSDir(descriptor_id, consensus):
+          print router['fingerprint'] + '\t' + router['nickname']
 
-        if not router['dir_port']: continue
-
-        url = 'http://'+router['address']+':'+str(router['dir_port'])+'/tor/rendezvous2/'+router['descriptor_id']
-
-        if args.verbose:
-          print url
-
-        f = urllib.urlopen(url)
-        if args.verbose:
-          if f.getcode() == 200:
-            descriptor = f.read().decode('utf-8')
-          print b32decode(router['descriptor_id'], True).encode('hex')
-          print str(f.getcode()) + '\t' + router['descriptor_id'] + '\t' + router['fingerprint'] + '\t' + router['nickname']
-          
-        else: # Loop until we find descriptor or error
-          if f.getcode() == 200:
-            descriptor = f.read().decode('utf-8')
-            
-      if descriptor:
-        print descriptor
-      else:
-        print "[!] No descriptor could be retrieved for that onion address"
   else:
     print "[!] The onion address you provided is not valid"
 
