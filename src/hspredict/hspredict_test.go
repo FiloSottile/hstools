@@ -1,29 +1,31 @@
 package hspredict
 
 import (
-	"crypto/rand"
-	"crypto/sha1"
-	"encoding/base32"
-	"fmt"
 	"testing"
 	"time"
 )
 
-func mkServiceId() string {
-	rand_id := make([]byte, 20)
-	rand.Read(rand_id)
-	hash := sha1.Sum(rand_id)
-	service_id := base32.StdEncoding.EncodeToString(hash[:10])
-	return service_id
+func TestFacebookOnion(t *testing.T) {
+	tt, _ := time.Parse(time.RFC3339, "2015-04-11T19:30:00Z")
+	desc, err := OnionToDescID("facebookcorewwwi.onion", tt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if desc[0] != "e4jiuabozanwqxdobx44w47mx2hi2auz" {
+		t.Errorf("Wrong desc[0]: %v (!= e4jiuabozanwqxdobx44w47mx2hi2auz)", desc[0])
+	}
+	if desc[1] != "tyvtyaqd4trmgoopqktv4aawelu6skes" {
+		t.Errorf("Wrong desc[0]: %v (!= tyvtyaqd4trmgoopqktv4aawelu6skes)", desc[1])
+	}
 }
 
-func TestRendComputeV2DescId(t *testing.T) {
-	service_id := "FACEBOOKCOREWWWI" //mkServiceId()
-	if len(service_id) != 16 {
-		t.Errorf("generated invalid service id")
+func TestCurrentOnion(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
 	}
-	time := time.Now().Unix()
-	desc_id1, _ := ComputeRendV2DescId(service_id, 0, time, "")
-	desc_id2, _ := ComputeRendV2DescId(service_id, 1, time, "")
-	fmt.Println("desc_id: ", desc_id1, desc_id2)
+	desc, err := OnionToDescID("facebookcorewwwi.onion", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(desc[0], desc[1])
 }

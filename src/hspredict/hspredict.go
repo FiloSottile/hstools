@@ -10,12 +10,43 @@ import (
 	"crypto/sha1"
 	"encoding/base32"
 	"encoding/binary"
+	"errors"
+	"strings"
+	"time"
 )
 
 const (
 	REPLICAS                          = 2
 	REND_TIME_PERIOD_V2_DESC_VALIDITY = 24 * 60 * 60 // 86400
 )
+
+func OnionToDescID(onion string, t time.Time) ([]string, error) {
+	onion = strings.ToLower(onion)
+
+	switch len(onion) {
+	case 16 + len(".onion"):
+		if onion[16:] == ".onion" {
+			onion = onion[:16]
+		} else {
+			return nil, errors.New("wrong suffix")
+		}
+	case 16:
+		// good like this
+	default:
+		return nil, errors.New("wrong length")
+	}
+
+	first, err := ComputeRendV2DescID(strings.ToUpper(onion), 0, t.Unix(), "")
+	if err != nil {
+		return nil, err
+	}
+	second, err := ComputeRendV2DescID(strings.ToUpper(onion), 1, t.Unix(), "")
+	if err != nil {
+		return nil, err
+	}
+
+	return []string{strings.ToLower(first), strings.ToLower(second)}, nil
+}
 
 func ComputeRendV2DescID(serviceID string, replica byte, time int64, descCookie string) (string, error) {
 	// Convert service ID to binary.
