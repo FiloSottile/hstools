@@ -1,12 +1,13 @@
 GO     ?= go
 GO     := env GOPATH="$(CURDIR):$(GOPATH)" $(GO)
 
+.PHONY: montecarlo test clean
+
 montecarlo:
 	$(GO) install montecarlo
 
 test:
-	$(GO) test hspredict -race -v -short
-	$(GO) test montecarlo -race -v -short
+	$(GO) test hstools -race -v -short
 
 clean:
 	- rm -r bin pkg

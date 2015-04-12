@@ -1,6 +1,7 @@
 package main
 
 import (
+	"hstools"
 	"log"
 	"math/big"
 	"math/rand"
@@ -14,17 +15,8 @@ import (
 
 var random = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func RandomHashring(entries int) *Hashring {
-	points := make([]*big.Int, entries)
-	for i := 0; i < entries; i++ {
-		points[i] = new(big.Int).Rand(random, HashringLimit)
-	}
-
-	return NewHashring(points)
-}
-
-func RandomDistance(ring *Hashring) *big.Int {
-	origin := new(big.Int).Rand(random, HashringLimit)
+func RandomDistance(ring *hstools.Hashring) *big.Int {
+	origin := new(big.Int).Rand(random, hstools.HashringLimit)
 	return ring.Distance(origin)
 }
 
@@ -42,7 +34,7 @@ func plotDistance() {
 		log.Fatal(err)
 	}
 
-	ring := RandomHashring(hsdirs)
+	ring := hstools.RandomHashring(hsdirs)
 
 	v := make(plotter.Values, runs)
 	for i := 0; i < runs; i++ {

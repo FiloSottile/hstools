@@ -1,4 +1,4 @@
-package hspredict
+package hstools
 
 import (
 	"testing"

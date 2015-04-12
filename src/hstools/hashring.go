@@ -1,8 +1,10 @@
-package main
+package hstools
 
 import (
 	"math/big"
+	"math/rand"
 	"sort"
+	"time"
 )
 
 var (
@@ -10,6 +12,8 @@ var (
 	bigTwo = big.NewInt(2)
 
 	HashringLimit = new(big.Int).Lsh(bigOne, 160)
+
+	random = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 type Hashring struct {
@@ -31,6 +35,15 @@ func NewHashring(points []*big.Int) *Hashring {
 	copy(h.points, points)
 	sort.Sort(bigIntSlice(h.points))
 	return h
+}
+
+func RandomHashring(entries int) *Hashring {
+	points := make([]*big.Int, entries)
+	for i := 0; i < entries; i++ {
+		points[i] = new(big.Int).Rand(random, HashringLimit)
+	}
+
+	return NewHashring(points)
 }
 
 func (h *Hashring) Next(p *big.Int) *big.Int {

@@ -4,7 +4,8 @@
 //
 // author: George Tankersley <george.tankersley@gmail.com>
 // author: Filippo Valsorda <hi@filippo.io>
-package hspredict
+
+package hstools
 
 import (
 	"crypto/sha1"
