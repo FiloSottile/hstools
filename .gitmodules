@@ -1,6 +1,3 @@
 [submodule "tor"]
 	path = tor
 	url = https://git.torproject.org/tor.git
-[submodule "src/git.torproject.org/user/phw/zoossh.git"]
-	path = src/git.torproject.org/user/phw/zoossh.git
-	url = git://git.torproject.org/user/phw/zoossh.git

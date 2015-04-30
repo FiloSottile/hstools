@@ -2,6 +2,7 @@ package hstools
 
 import (
 	"encoding/base32"
+	"encoding/base64"
 	"encoding/hex"
 	"strings"
 )
@@ -16,4 +17,11 @@ func FromBase32(s string) ([]byte, error) {
 
 func ToHex(b []byte) string {
 	return strings.ToUpper(hex.EncodeToString(b))
+}
+
+func FromBase64(s string) ([]byte, error) {
+	if r := len(s) % 4; r != 0 {
+		s += strings.Repeat("=", 4-r)
+	}
+	return base64.StdEncoding.DecodeString(s)
 }
