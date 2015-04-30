@@ -46,6 +46,10 @@ func RandomHashring(entries int) *Hashring {
 	return NewHashring(points)
 }
 
+func (h *Hashring) Len() int {
+	return len(h.points)
+}
+
 func (h *Hashring) Next(p *big.Int) *big.Int {
 	i := sort.Search(len(h.points), func(i int) bool {
 		return h.points[i].Cmp(p) >= 0
