@@ -7,11 +7,11 @@ first copy and probably has bugs.
   PGP: 0xAEC10762
 """
 
-from time import time
+from time import mktime, time
 from base64 import b32encode, b32decode
 from hashlib import sha1
 from struct import pack, unpack
-from stem.descriptor import DocumentHandler
+from stem.descriptor import parse_file, DocumentHandler
 from stem.descriptor.remote import DescriptorDownloader
 import argparse
 from bisect import bisect_left
@@ -21,7 +21,7 @@ from bisect import bisect_left
 # HS into the future.
 
 # Returns base_32 encode desc_id - descriptor-id = H(permanent-id | H(time-period | descriptor-cookie | replica))
-def rend_compute_v2_desc_id(service_id_base32, replica, time = int(time()), descriptor_cookie = ""):#
+def rend_compute_v2_desc_id(service_id_base32, replica, time, descriptor_cookie = ""):#
   service_id = b32decode(service_id_base32, 1)
   time_period = get_time_period(time, 0, service_id)
   secret_id_part = get_secret_id_part_bytes(time_period, descriptor_cookie, replica)
@@ -76,15 +76,22 @@ def main():
   
   parser = argparse.ArgumentParser()
   parser.add_argument('onion_address', help='The hidden service address - e.g. (idnxcnkne4qt76tg.onion)')
+  parser.add_argument('--consensus', help='The optional consensus file', required=False)
   args = parser.parse_args()
 
-  downloader = DescriptorDownloader()
-  consensus = downloader.get_consensus(document_handler = DocumentHandler.DOCUMENT).run()[0]
+  if args.consensus is None:
+    downloader = DescriptorDownloader()
+    consensus = downloader.get_consensus(document_handler = DocumentHandler.DOCUMENT).run()[0]
+    t = time()
+  else:
+    with open(args.consensus) as f:
+      consensus = next(parse_file(f, 'network-status-consensus-3 1.0', document_handler = DocumentHandler.DOCUMENT))
+    t = mktime(consensus.valid_after.timetuple())
 
   service_id, tld = args.onion_address.split(".")
   if tld == 'onion' and len(service_id) == 16 and service_id.isalnum():   
       for replica in range(0, REPLICAS):
-        descriptor_id = rend_compute_v2_desc_id(service_id, replica, time())
+        descriptor_id = rend_compute_v2_desc_id(service_id, replica, t)
         print descriptor_id + '\t' + b32decode(descriptor_id, True).encode('hex')
         for router in find_responsible_HSDir(descriptor_id, consensus):
           print router['fingerprint'] + '\t' + router['nickname']
