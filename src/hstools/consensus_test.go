@@ -1,10 +1,7 @@
 package hstools
 
 import (
-	"encoding/base32"
-	"encoding/hex"
 	"math/big"
-	"strings"
 	"testing"
 	"time"
 )
@@ -21,12 +18,8 @@ func TestParseConsensus(t *testing.T) {
 	tt, _ := time.Parse(time.RFC3339, "2015-04-11T19:30:00Z")
 	desc, err := OnionToDescID("facebookcorewwwi.onion", tt)
 
-	descA, err := base32.StdEncoding.DecodeString(strings.ToUpper(desc[0]))
-	if err != nil {
-		t.Fatal(err)
-	}
-	hsdir := hex.EncodeToString(c.Next(new(big.Int).SetBytes(descA)).Bytes())
-	if hsdir != "274d66dc037fe344c58371b17c606988cbc37dfb" {
+	hsdir := c.Next(new(big.Int).SetBytes(desc[0])).Bytes()
+	if ToHex(hsdir) != "274D66DC037FE344C58371B17C606988CBC37DFB" {
 		t.Fatalf("wrong hsdir: %s", hsdir)
 	}
 }

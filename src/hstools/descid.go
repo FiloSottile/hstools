@@ -9,7 +9,6 @@ package hstools
 
 import (
 	"crypto/sha1"
-	"encoding/base32"
 	"encoding/binary"
 	"errors"
 	"strings"
@@ -21,7 +20,7 @@ const (
 	REND_TIME_PERIOD_V2_DESC_VALIDITY = 24 * 60 * 60 // 86400
 )
 
-func OnionToDescID(onion string, t time.Time) ([]string, error) {
+func OnionToDescID(onion string, t time.Time) ([][]byte, error) {
 	onion = strings.ToLower(onion)
 
 	switch len(onion) {
@@ -37,23 +36,23 @@ func OnionToDescID(onion string, t time.Time) ([]string, error) {
 		return nil, errors.New("wrong length")
 	}
 
-	first, err := ComputeRendV2DescID(strings.ToUpper(onion), 0, t.Unix(), "")
+	first, err := ComputeRendV2DescID(onion, 0, t.Unix(), "")
 	if err != nil {
 		return nil, err
 	}
-	second, err := ComputeRendV2DescID(strings.ToUpper(onion), 1, t.Unix(), "")
+	second, err := ComputeRendV2DescID(onion, 1, t.Unix(), "")
 	if err != nil {
 		return nil, err
 	}
 
-	return []string{strings.ToLower(first), strings.ToLower(second)}, nil
+	return [][]byte{first, second}, nil
 }
 
-func ComputeRendV2DescID(serviceID string, replica byte, time int64, descCookie string) (string, error) {
+func ComputeRendV2DescID(serviceID string, replica byte, time int64, descCookie string) ([]byte, error) {
 	// Convert service ID to binary.
-	serviceIDBinary, err := base32.StdEncoding.DecodeString(serviceID)
+	serviceIDBinary, err := FromBase32(serviceID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Calculate current time-period.
@@ -65,7 +64,7 @@ func ComputeRendV2DescID(serviceID string, replica byte, time int64, descCookie 
 	// Calculate descriptor ID.
 	descID := rendGetDescriptorIDBytes(serviceIDBinary, secretIDPart)
 
-	return string(base32.StdEncoding.EncodeToString(descID)), nil
+	return descID, nil
 }
 
 func getTimePeriod(time int64, deviation int64, serviceIDBinary []byte) int64 {
