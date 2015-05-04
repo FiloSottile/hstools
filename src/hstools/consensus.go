@@ -3,44 +3,46 @@ package hstools
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
-	"math/big"
+	"io"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const consensusFilename = "consensuses-2006-01/02/2006-01-02-15-00-00-consensus"
 
 // Hour is just a Unix timestamp divided by 3600, a unique index for an hour
-type Hour int64
+type Hour int32
+
+type IdentityKey [20]byte
 
 type Consensus struct {
 	Time     Hour
 	Filename string
 	Error    error
-	H        *Hashring
+	K        []IdentityKey
 }
 
 // ReadConsensuses reads consensus files from a folder structure like
 // DIR/consensuses-2011-02/04/2011-02-04-02-00-00-consensus and sends them
 // on the returned channel. From since to until included.
-func ReadConsensuses(dir string, since, until Hour) chan Consensus {
-	ch := make(chan Consensus)
+func ReadConsensuses(dir string, since, until Hour) chan *Consensus {
+	ch := make(chan *Consensus)
 	go func() {
 		for h := since; h <= until; h++ {
-			filename := time.Unix(int64(h*3600), 0).Format(consensusFilename)
+			filename := HourToTime(h).Format(consensusFilename)
 			filename = filepath.Join(dir, filename)
-			c := Consensus{
+			c := &Consensus{
 				Time:     h,
 				Filename: filename,
 			}
 
-			hashring, err := ParseConsensus(filename)
+			keys, err := ParseConsensus(filename)
 			if err != nil {
 				c.Error = err
 			} else {
-				c.H = hashring
+				c.K = keys
 			}
 
 			ch <- c
@@ -51,14 +53,14 @@ func ReadConsensuses(dir string, since, until Hour) chan Consensus {
 }
 
 // ParseConsensus parses a consensus file and extracts the HSDir Hashring
-func ParseConsensus(filename string) (*Hashring, error) {
+func ParseConsensus(filename string) ([]IdentityKey, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	var fingerprint string
-	var hsdirs []*big.Int
+	var keys []IdentityKey
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -74,13 +76,32 @@ func ParseConsensus(filename string) (*Hashring, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%v (%s)", err, fingerprint)
 			}
-			n := new(big.Int).SetBytes(f)
-			hsdirs = append(hsdirs, n)
+			var k IdentityKey
+			copy(k[len(k)-len(f):], f)
+			keys = append(keys, k)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
 
-	return NewHashring(hsdirs), nil
+	return keys, nil
+}
+
+type PackedConsensusHdr struct {
+	Time Hour
+	Len  int32
+}
+
+func WritePackedConsensus(w io.Writer, c *Consensus) error {
+	hdr := PackedConsensusHdr{Time: c.Time, Len: int32(len(c.K))}
+	if err := binary.Write(w, binary.BigEndian, hdr); err != nil {
+		return err
+	}
+	for _, k := range c.K {
+		if _, err := w.Write(k[:]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
