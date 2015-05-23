@@ -1,0 +1,13 @@
+diff --git a/src/crypto/rand/util.go b/src/crypto/rand/util.go
+index 5f74407..f6d7bbc 100644
+--- a/src/crypto/rand/util.go
++++ b/src/crypto/rand/util.go
+@@ -96,7 +96,7 @@ func Prime(rand io.Reader, bits int) (p *big.Int, err error) {
+ 		// There is a tiny possibility that, by adding delta, we caused
+ 		// the number to be one bit too long. Thus we check BitLen
+ 		// here.
+-		if p.ProbablyPrime(20) && p.BitLen() == bits {
++		if p.ProbablyPrime(1) && p.BitLen() == bits {
+ 			return
+ 		}
+ 	}

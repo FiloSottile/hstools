@@ -21,6 +21,10 @@ func ToHex(b []byte) string {
 	return strings.ToUpper(hex.EncodeToString(b))
 }
 
+func FromHex(s string) ([]byte, error) {
+	return hex.DecodeString(s)
+}
+
 func FromBase64(s string) ([]byte, error) {
 	if r := len(s) % 4; r != 0 {
 		s += strings.Repeat("=", 4-r)
