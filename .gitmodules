@@ -1,3 +1,6 @@
 [submodule "tor"]
 	path = tor
 	url = https://git.torproject.org/tor.git
+[submodule "src/github.com/boltdb/bolt"]
+	path = src/github.com/boltdb/bolt
+	url = https://github.com/boltdb/bolt

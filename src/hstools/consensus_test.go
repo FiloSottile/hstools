@@ -11,7 +11,7 @@ func TestParseConsensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := NewHashring(KeysToIntSlice(keys))
+	h := NewHashring(HashesToIntSlice(keys))
 	if h.Len() != 2983 {
 		t.Fatalf("wrong number of points: %d", h.Len())
 	}

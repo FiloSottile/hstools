@@ -11,7 +11,7 @@ import (
 
 // IDDistance efficiently calculates the difference (b - a) mod 2^160, or
 // distance a -> b on a 20-byte ring and stores it in d. a and b unchanged.
-func IDDistance(a, b, d *IdentityKey) {
+func IDDistance(a, b, d *Hash) {
 	var carry bool
 	for i := len(a) - 1; i >= 0; i-- {
 		B := b[i]
@@ -23,7 +23,7 @@ func IDDistance(a, b, d *IdentityKey) {
 	}
 }
 
-func HashIdentity(pk rsa.PublicKey) IdentityKey {
+func HashIdentity(pk rsa.PublicKey) Hash {
 	// tor-spec.txt#n108
 	// When we refer to "the hash of a public key", we mean the SHA-1 hash of the
 	// DER encoding of an ASN.1 RSA public key (as specified in PKCS.1).
@@ -36,7 +36,7 @@ func HashIdentity(pk rsa.PublicKey) IdentityKey {
 	if err != nil {
 		panic(err)
 	}
-	return IdentityKey(sha1.Sum(der))
+	return Hash(sha1.Sum(der))
 }
 
 func checkKey(key *rsa.PrivateKey) bool {
@@ -48,7 +48,7 @@ func checkKey(key *rsa.PrivateKey) bool {
 	return true
 }
 
-func Brute(targetA, targetB, maxA, maxB IdentityKey, n int,
+func Brute(targetA, targetB, maxA, maxB Hash, n int,
 	log func(v ...interface{})) (a []*rsa.PrivateKey, b []*rsa.PrivateKey) {
 	for i := 0; ; i++ {
 		// We generate real keys because e++ ones are detectable
@@ -85,7 +85,7 @@ func Brute(targetA, targetB, maxA, maxB IdentityKey, n int,
 			}
 		}
 
-		if i%1000 == 0 {
+		if i%1000 == 0 && i != 0 {
 			log(len(a), len(b), i)
 		}
 	}

@@ -36,10 +36,21 @@ func HourToTime(h Hour) time.Time {
 	return time.Unix(int64(h*3600), 0)
 }
 
-func KeysToIntSlice(keys []IdentityKey) []*big.Int {
+func HashesToIntSlice(keys []Hash) []*big.Int {
 	ints := make([]*big.Int, len(keys))
 	for i, k := range keys {
 		ints[i] = new(big.Int).SetBytes(k[:])
 	}
 	return ints
+}
+
+func IntToHash(i *big.Int) Hash {
+	var k Hash
+	b := i.Bytes()
+	copy(k[len(k)-len(b):], b)
+	return k
+}
+
+func HashToInt(k Hash) *big.Int {
+	return new(big.Int).SetBytes(k[:])
 }

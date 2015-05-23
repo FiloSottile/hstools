@@ -35,7 +35,7 @@ func OpenKeysDb(filename string) (*KeysDB, error) {
 	return d, nil
 }
 
-func (d *KeysDB) Seen(keys []IdentityKey, h Hour) error {
+func (d *KeysDB) Seen(keys []Hash, h Hour) error {
 	return d.db.Update(func(tx *bolt.Tx) error {
 		for _, k := range keys {
 			b := tx.Bucket([]byte("Keys"))

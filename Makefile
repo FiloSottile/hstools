@@ -1,16 +1,19 @@
-GO     ?= go
-GO     := env GOPATH="$(CURDIR):$(GOPATH)" $(GO)
+.PHONY: montecarlo preprocess brute test clean all
+all: montecarlo preprocess brute
 
-.PHONY: montecarlo preprocess test clean
+GO     ?= go
 
 montecarlo:
-	$(GO) install montecarlo
+	GOPATH="$(CURDIR)" $(GO) build -o bin/montecarlo src/tools/montecarlo.go
 
 preprocess:
-	$(GO) install preprocess
+	GOPATH="$(CURDIR)" $(GO) build -o bin/preprocess src/tools/preprocess.go
+
+brute:
+	GOPATH="$(CURDIR)" $(GO) build -o bin/brute src/tools/brute.go
 
 test:
-	$(GO) test hstools -race -v -short
+	GOPATH="$(CURDIR)" $(GO) test hstools -race -v -short
 
 clean:
 	- rm -r bin pkg

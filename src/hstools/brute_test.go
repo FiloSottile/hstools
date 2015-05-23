@@ -16,7 +16,7 @@ func exitIfErr(t *testing.T, err error) {
 }
 
 func TestIDDistance(t *testing.T) {
-	var a, b, A, B, d IdentityKey
+	var a, b, A, B, d Hash
 	var aInt, bInt = new(big.Int), new(big.Int)
 	var dInt, DInt = new(big.Int), new(big.Int)
 	for i := 0; i < 10000; i++ {
@@ -73,7 +73,6 @@ x8IyevfhgPIzX0bajUEqm+phNXWBMUTobyTJbkJQ4NQ=
 	}
 	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	exitIfErr(t, err)
-	t.Log(key.PublicKey.N.BitLen())
 	fing, err := FromHex("EC816FBE76CD94C9064C8F22AF5A468CC46953EA")
 	exitIfErr(t, err)
 	res := HashIdentity(key.PublicKey)

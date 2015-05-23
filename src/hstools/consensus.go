@@ -15,13 +15,13 @@ const consensusFilename = "consensuses-2006-01/02/2006-01-02-15-00-00-consensus"
 // Hour is just a Unix timestamp divided by 3600, a unique index for an hour
 type Hour int32
 
-type IdentityKey [20]byte
+type Hash [20]byte
 
 type Consensus struct {
 	Time     Hour
 	Filename string
 	Error    error
-	K        []IdentityKey
+	K        []Hash
 }
 
 // ReadConsensuses reads consensus files from a folder structure like
@@ -53,14 +53,14 @@ func ReadConsensuses(dir string, since, until Hour) chan *Consensus {
 }
 
 // ParseConsensus parses a consensus file and extracts the HSDir Hashring
-func ParseConsensus(filename string) ([]IdentityKey, error) {
+func ParseConsensus(filename string) ([]Hash, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
 	var fingerprint string
-	var keys []IdentityKey
+	var keys []Hash
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -76,7 +76,7 @@ func ParseConsensus(filename string) ([]IdentityKey, error) {
 			if err != nil {
 				return nil, fmt.Errorf("%v (%s)", err, fingerprint)
 			}
-			var k IdentityKey
+			var k Hash
 			copy(k[len(k)-len(f):], f)
 			keys = append(keys, k)
 		}
