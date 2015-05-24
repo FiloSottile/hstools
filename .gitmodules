@@ -4,3 +4,15 @@
 [submodule "src/github.com/boltdb/bolt"]
 	path = src/github.com/boltdb/bolt
 	url = https://github.com/boltdb/bolt
+[submodule "src/github.com/ActiveState/tail"]
+	path = src/github.com/ActiveState/tail
+	url = https://github.com/ActiveState/tail
+[submodule "src/github.com/howeyc/fsnotify"]
+	path = src/github.com/howeyc/fsnotify
+	url = https://github.com/howeyc/fsnotify
+[submodule "src/gopkg.in/tomb.v1"]
+	path = src/gopkg.in/tomb.v1
+	url = https://gopkg.in/tomb.v1
+[submodule "src/golang.org/x/net"]
+	path = src/golang.org/x/net
+	url = https://go.googlesource.com/net
