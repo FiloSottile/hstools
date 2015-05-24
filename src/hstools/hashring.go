@@ -61,6 +61,13 @@ func (h *Hashring) Next(p *big.Int) *big.Int {
 	}
 }
 
+func (h *Hashring) Prev(p *big.Int) *big.Int {
+	i := sort.Search(len(h.points), func(i int) bool {
+		return h.points[i].Cmp(p) >= 0
+	})
+	return h.points[(i-1)%len(h.points)]
+}
+
 func (h *Hashring) Distance(p *big.Int) *big.Int {
 	next := h.Next(p)
 	if p.Cmp(next) < 0 {

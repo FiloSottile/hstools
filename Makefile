@@ -1,5 +1,5 @@
-.PHONY: montecarlo preprocess brute test clean all
-all: montecarlo preprocess brute
+.PHONY: montecarlo preprocess brute lookmeup test clean all
+all: montecarlo preprocess brute lookmeup
 
 GO     ?= go
 
@@ -11,6 +11,9 @@ preprocess:
 
 brute:
 	GOPATH="$(CURDIR)" $(GO) build -o bin/brute src/tools/brute.go
+
+lookmeup:
+	GOPATH="$(CURDIR)" $(GO) build -o bin/lookmeup src/tools/lookmeup.go
 
 test:
 	GOPATH="$(CURDIR)" $(GO) test hstools -race -v -short
