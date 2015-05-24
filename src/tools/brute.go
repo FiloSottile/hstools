@@ -14,6 +14,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -24,6 +25,8 @@ func fatalIfErr(err error) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -55,7 +58,8 @@ func main() {
 	log.Println("    First HSDir B:", hstools.ToHex(nextB[:]))
 
 	log.Println("[*] Starting bruteforce...")
-	keysA, keysB := hstools.Brute(keyA, keyB, nextA, nextB, 3, log.Println)
+	keysA, keysB := hstools.Brute(keyA, keyB, nextA, nextB, 3,
+		runtime.NumCPU(), log.Println)
 
 	log.Println("[*] Done!")
 

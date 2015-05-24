@@ -48,45 +48,52 @@ func checkKey(key *rsa.PrivateKey) bool {
 	return true
 }
 
-func Brute(targetA, targetB, maxA, maxB Hash, n int,
+func Brute(targetA, targetB, maxA, maxB Hash, numKeys, numP int,
 	log func(v ...interface{})) (a []*rsa.PrivateKey, b []*rsa.PrivateKey) {
-	for i := 0; ; i++ {
-		// We generate real keys because e++ ones are detectable
-		// Set the ProbablyPrime rounds to 1 in rand.Prime, we check later
-		key, err := rsa.GenerateKey(rand.Reader, 1024)
-		if err != nil {
-			panic(err)
+	finished := false
+	keys := make(chan *rsa.PrivateKey)
+	for p := 0; p < numP; p++ {
+		go func(p int) {
+			for i := 0; i%100 != 0 || !finished; i++ {
+				// We generate real keys because e++ ones are detectable
+				// Set the ProbablyPrime rounds to 1 in rand.Prime, we check later
+				key, err := rsa.GenerateKey(rand.Reader, 1024)
+				if err != nil {
+					panic(err)
+				}
+				id := HashIdentity(key.PublicKey)
+
+				if (bytes.Compare(targetA[:], id[:]) < 0 && bytes.Compare(id[:], maxA[:]) < 0) ||
+					(bytes.Compare(targetB[:], id[:]) < 0 && bytes.Compare(id[:], maxB[:]) < 0) {
+					keys <- key
+				}
+
+				if i%1000 == 0 && i != 0 {
+					log("Process #", p, "- iteration #", i)
+				}
+			}
+		}(p)
+	}
+	for {
+		key := <-keys
+		if !checkKey(key) {
+			log("scrapped bad key")
+			continue
 		}
 		id := HashIdentity(key.PublicKey)
-
-		if bytes.Compare(targetA[:], id[:]) < 0 &&
-			bytes.Compare(id[:], maxA[:]) < 0 {
-			if !checkKey(key) {
-				log("scrapped bad key", i)
-				continue
-			}
+		switch {
+		case bytes.Compare(targetA[:], id[:]) < 0 && bytes.Compare(id[:], maxA[:]) < 0:
 			a = append(a, key)
-			log(len(a), len(b), i)
-			if len(a) >= n && len(b) >= n {
-				return
-			}
-		}
-
-		if bytes.Compare(targetB[:], id[:]) < 0 &&
-			bytes.Compare(id[:], maxB[:]) < 0 {
-			if !checkKey(key) {
-				log("scrapped bad key", i)
-				continue
-			}
+		case bytes.Compare(targetB[:], id[:]) < 0 && bytes.Compare(id[:], maxB[:]) < 0:
 			b = append(b, key)
-			log(len(a), len(b), i)
-			if len(a) >= n && len(b) >= n {
-				return
-			}
+		default:
+			log("weird, this key is not valid anymore?")
+			continue
 		}
-
-		if i%1000 == 0 && i != 0 {
-			log(len(a), len(b), i)
+		log("FOUND ONE!", "A", len(a), "B", len(b))
+		if len(a) >= numKeys && len(b) >= numKeys {
+			finished = true
+			return
 		}
 	}
 }
