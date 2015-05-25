@@ -103,6 +103,7 @@ func WSServer(ws *websocket.Conn) {
 }
 
 func main() {
+	defer tail.Cleanup()
 	if len(os.Args) < 4 {
 		log.Fatal("usage: announce cert.pem key.pem logfile")
 	}

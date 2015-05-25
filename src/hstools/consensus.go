@@ -15,8 +15,6 @@ const consensusFilename = "consensuses-2006-01/02/2006-01-02-15-00-00-consensus"
 // Hour is just a Unix timestamp divided by 3600, a unique index for an hour
 type Hour int32
 
-type Hash [20]byte
-
 type Consensus struct {
 	Time     Hour
 	Filename string
@@ -104,4 +102,55 @@ func WritePackedConsensus(w io.Writer, c *Consensus) error {
 		}
 	}
 	return nil
+}
+
+type PackReader struct {
+	rc  io.ReadCloser
+	c   *Consensus
+	err error
+}
+
+func NewPackReader(filename string) (p *PackReader) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return &PackReader{
+			err: err,
+		}
+	}
+	return &PackReader{
+		rc: f,
+	}
+}
+
+func (p *PackReader) Load() bool {
+	var hdr PackedConsensusHdr
+	if err := binary.Read(p.rc, binary.BigEndian, &hdr); err == io.EOF {
+		p.rc.Close()
+		return false
+	} else if err != nil {
+		p.err = err
+		p.rc.Close()
+		return false
+	}
+	p.c = &Consensus{
+		Time: hdr.Time,
+		K:    make([]Hash, hdr.Len),
+	}
+	for i := int32(0); i < hdr.Len; i++ {
+		_, err := io.ReadFull(p.rc, p.c.K[i][:])
+		if err != nil {
+			p.err = err
+			p.rc.Close()
+			return false
+		}
+	}
+	return true
+}
+
+func (p *PackReader) Consensus() *Consensus {
+	return p.c
+}
+
+func (p *PackReader) Err() error {
+	return p.err
 }

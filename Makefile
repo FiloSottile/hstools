@@ -1,7 +1,7 @@
-.PHONY: montecarlo preprocess brute lookmeup announce test clean all
-all: montecarlo preprocess brute lookmeup announce
+.PHONY: montecarlo preprocess brute lookmeup announce grind test clean all
+all: preprocess brute lookmeup announce grind
 
-GO     ?= go
+GO ?= go
 
 montecarlo:
 	GOPATH="$(CURDIR)" $(GO) build -o bin/montecarlo src/tools/montecarlo.go
@@ -17,6 +17,9 @@ lookmeup:
 
 announce:
 	GOPATH="$(CURDIR)" $(GO) build -o bin/announce src/tools/announce.go
+
+grind:
+	GOPATH="$(CURDIR)" $(GO) build -o bin/grind src/tools/grind.go
 
 test:
 	GOPATH="$(CURDIR)" $(GO) test hstools -race -v -short

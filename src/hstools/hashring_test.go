@@ -48,12 +48,3 @@ func TestHashringDistance(t *testing.T) {
 		t.Fatal(n, exp)
 	}
 }
-
-func TestAvgDistance(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	ring := RandomHashring(2500)
-	mean, stdDev := ring.AvgDistance()
-	t.Log(mean, stdDev)
-}

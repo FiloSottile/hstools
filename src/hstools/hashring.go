@@ -52,13 +52,16 @@ func (h *Hashring) Len() int {
 
 func (h *Hashring) Next(p *big.Int) *big.Int {
 	i := sort.Search(len(h.points), func(i int) bool {
-		return h.points[i].Cmp(p) >= 0
+		return h.points[i].Cmp(p) > 0
 	})
-	if i < len(h.points) && h.points[i].Cmp(p) == 0 {
-		panic("point is present")
-	} else {
-		return h.points[i%len(h.points)]
-	}
+	return h.points[i%len(h.points)]
+}
+
+func (h *Hashring) Fourth(p *big.Int) *big.Int {
+	i := sort.Search(len(h.points), func(i int) bool {
+		return h.points[i].Cmp(p) > 0
+	})
+	return h.points[(i+3)%len(h.points)]
 }
 
 func (h *Hashring) Prev(p *big.Int) *big.Int {
@@ -68,70 +71,11 @@ func (h *Hashring) Prev(p *big.Int) *big.Int {
 	return h.points[(i-1)%len(h.points)]
 }
 
-func (h *Hashring) Distance(p *big.Int) *big.Int {
-	next := h.Next(p)
-	if p.Cmp(next) < 0 {
-		return new(big.Int).Sub(next, p)
+func (*Hashring) Diff(from, to *big.Int) *big.Int {
+	if from.Cmp(to) < 0 {
+		return new(big.Int).Sub(to, from)
 	} else {
-		res := new(big.Int).Sub(HashringLimit, p)
-		return res.Add(res, next)
+		res := new(big.Int).Sub(HashringLimit, from)
+		return res.Add(res, to)
 	}
-}
-
-func bigMean(nums []*big.Int) *big.Int {
-	avg := big.NewInt(0)
-	size := big.NewInt(int64(len(nums)))
-	for _, n := range nums {
-		avg.Add(avg, new(big.Int).Div(n, size))
-	}
-	return avg
-}
-
-func bigSqrt(n *big.Int) *big.Int {
-	// adapted from mini-gmp
-	u, t := new(big.Int), new(big.Int)
-	t.SetBit(t, n.BitLen()/2+1, 1)
-	for {
-		u.Set(t)
-		t.Quo(n, u)
-		t.Add(t, u)
-		t.Rsh(t, 1)
-		if t.Cmp(u) >= 0 {
-			return u
-		}
-	}
-}
-
-func bigStdDev(nums []*big.Int, mean *big.Int) *big.Int {
-	avg := big.NewInt(0)
-	size := big.NewInt(int64(len(nums)) - 1)
-	for _, n := range nums {
-		d := new(big.Int)
-		d.Exp(d.Sub(n, mean), bigTwo, nil)
-		avg.Add(avg, d.Div(d, size))
-	}
-	return bigSqrt(avg)
-}
-
-func bigMAD(nums []*big.Int, mean *big.Int) *big.Int {
-	avg := big.NewInt(0)
-	size := big.NewInt(int64(len(nums)))
-	for _, n := range nums {
-		d := new(big.Int)
-		d.Abs(d.Sub(mean, n))
-		avg.Add(avg, d.Div(d, size))
-	}
-	return avg
-}
-
-func (h *Hashring) AvgDistance() (mean, stdDev *big.Int) {
-	samples := make([]*big.Int, 500000)
-	origin := new(big.Int)
-	for i := 0; i < 500000; i++ {
-		origin.Rand(random, HashringLimit)
-		samples[i] = h.Distance(origin)
-	}
-	mean = bigMean(samples)
-	stdDev = bigStdDev(samples, mean)
-	return
 }

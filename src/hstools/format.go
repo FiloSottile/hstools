@@ -1,13 +1,36 @@
 package hstools
 
 import (
+	"crypto/sha1"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/hex"
+	"math"
 	"math/big"
 	"strings"
 	"time"
 )
+
+type Hash [20]byte
+
+// Distance efficiently calculates the difference (b - a) mod 2^160, or
+// distance a -> b on a 20-byte ring and stores it in d. a and b unchanged.
+func (a *Hash) Distance(b, d *Hash) {
+	var carry bool
+	for i := len(a) - 1; i >= 0; i-- {
+		B := b[i]
+		if carry {
+			B--
+		}
+		d[i] = B - a[i]
+		carry = B < a[i] || (carry && B == math.MaxUint8)
+	}
+}
+
+func SHA1(data []byte) *Hash {
+	h := Hash(sha1.Sum(data))
+	return &h
+}
 
 func ToBase32(b []byte) string {
 	return strings.ToLower(base32.StdEncoding.EncodeToString(b))

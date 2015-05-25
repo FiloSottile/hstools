@@ -6,22 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"encoding/asn1"
-	"math"
 )
-
-// IDDistance efficiently calculates the difference (b - a) mod 2^160, or
-// distance a -> b on a 20-byte ring and stores it in d. a and b unchanged.
-func IDDistance(a, b, d *Hash) {
-	var carry bool
-	for i := len(a) - 1; i >= 0; i-- {
-		B := b[i]
-		if carry {
-			B--
-		}
-		d[i] = B - a[i]
-		carry = B < a[i] || (carry && B == math.MaxUint8)
-	}
-}
 
 func HashIdentity(pk rsa.PublicKey) Hash {
 	// tor-spec.txt#n108
