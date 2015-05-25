@@ -34,7 +34,7 @@ func main() {
 		c := r.Consensus()
 		h := hstools.NewHashring(hstools.HashesToIntSlice(c.K))
 		log.Println(hstools.HourToTime(c.Time), h.Len())
-		res := hstools.SampleDistance4(h)
+		res := hstools.AnalyzePartitionData(h.Distance4Data())
 		log.Printf("%#v", res)
 
 		log.Println("################   MAX", hstools.Score(new(big.Int), res))
