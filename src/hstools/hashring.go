@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	bigOne = big.NewInt(1)
-	bigTwo = big.NewInt(2)
+	bigOne   = big.NewInt(1)
+	bigTwo   = big.NewInt(2)
+	bigThree = big.NewInt(3)
 
 	HashringLimit = new(big.Int).Lsh(bigOne, 160)
 
@@ -55,6 +56,17 @@ func (h *Hashring) Next(p *big.Int) *big.Int {
 		return h.points[i].Cmp(p) > 0
 	})
 	return h.points[i%len(h.points)]
+}
+
+func (h *Hashring) Next3(p *big.Int) []*big.Int {
+	i := sort.Search(len(h.points), func(i int) bool {
+		return h.points[i].Cmp(p) > 0
+	})
+	return []*big.Int{
+		h.points[i%len(h.points)],
+		h.points[(i+1)%len(h.points)],
+		h.points[(i+2)%len(h.points)],
+	}
 }
 
 func (h *Hashring) Fourth(p *big.Int) *big.Int {

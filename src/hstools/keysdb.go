@@ -16,8 +16,6 @@ type KeysDB struct {
 }
 
 func OpenKeysDb(filename string) (*KeysDB, error) {
-	// os.Remove(filename)
-
 	d := &KeysDB{}
 	var err error
 
@@ -66,7 +64,18 @@ func (d *KeysDB) Seen(keys []Hash, h Hour) error {
 		}
 		return nil
 	})
+}
 
+func (d *KeysDB) Lookup(key Hash) (res KeyMeta, err error) {
+	err = d.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Keys"))
+		v := b.Get([]byte(key[:]))
+		if err := json.Unmarshal(v, &res); err != nil {
+			return err
+		}
+		return nil
+	})
+	return
 }
 
 func (d *KeysDB) Close() error {

@@ -37,6 +37,21 @@ func bigSqrt(n *big.Int) *big.Int {
 	}
 }
 
+func bigCubeRoot(n *big.Int) *big.Int {
+	// http://math.stackexchange.com/a/263113
+	cube, x := new(big.Int), new(big.Int)
+
+	a := new(big.Int).Set(n)
+	for cube.Exp(a, bigThree, nil).Cmp(n) > 0 {
+		// a = (2*a + n/a^2) / 3
+		x.Quo(n, x.Mul(a, a))
+		x.Add(x.Add(x, a), a)
+		a.Quo(x, bigThree)
+	}
+
+	return a
+}
+
 func bigStdDev(nums []*big.Int, mean *big.Int) *big.Int {
 	avg := big.NewInt(0)
 	size := big.NewInt(int64(len(nums)) - 1)
@@ -150,7 +165,12 @@ func AnalyzePartitionData(data []*PartitionData) *MetricData {
 			w.Div(w.Mul(w, part.l), HashringLimit)
 			m.AbsDev.Add(m.AbsDev, w)
 		} else {
-			d1.Abs(d1) // Assumes l = x1 - x0 and x1 < x0
+			// Assumes l = x1 - x0 and x1 < x0
+			if part.l.Cmp(new(big.Int).Add(part.x0, part.x1)) != 0 ||
+				part.x1.Cmp(part.x0) >= 0 {
+				panic("wrong")
+			}
+			d1.Abs(d1)
 
 			w0 := new(big.Int).Div(d0, bigTwo)
 			w0.Div(w0.Mul(w0.Abs(w0), d0), HashringLimit)
@@ -166,7 +186,33 @@ func AnalyzePartitionData(data []*PartitionData) *MetricData {
 
 var mask = new(big.Int).Exp(big.NewInt(2), big.NewInt(160-30), nil)
 
-func Score(v *big.Int, res *MetricData) *big.Int {
+func Score(v *big.Int, res *MetricData) int64 {
 	dev := new(big.Int).Sub(res.Mean, v)
-	return dev.Div(dev.Mul(dev, big.NewInt(100)), res.AbsDev)
+	return dev.Div(dev.Mul(dev, big.NewInt(100)), res.AbsDev).Int64()
+}
+
+func (h *Hashring) Age(p *big.Int, now Hour, keysDB *KeysDB) (Hour, error) {
+	var res Hour
+	for _, p := range h.Next3(p) {
+		v, err := keysDB.Lookup(IntToHash(p))
+		if err != nil {
+			return 0, err
+		}
+		res += now - v.FirstSeen
+	}
+	return res / 3, nil
+}
+
+func (h *Hashring) AgeData(now Hour, keysDB *KeysDB) (res []*PartitionData, err error) {
+	for i, p := range h.points {
+		age, err := h.Age(p, now, keysDB)
+		if err != nil {
+			return nil, err
+		}
+		l := h.Diff(p, h.points[(i+1)%len(h.points)])
+		res = append(res, &PartitionData{
+			x0: big.NewInt(int64(age)), x1: big.NewInt(int64(age)), l: l,
+		})
+	}
+	return
 }

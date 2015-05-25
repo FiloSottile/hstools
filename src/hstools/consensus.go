@@ -105,7 +105,8 @@ func WritePackedConsensus(w io.Writer, c *Consensus) error {
 }
 
 type PackReader struct {
-	rc  io.ReadCloser
+	rd  io.Reader
+	cl  io.Closer
 	c   *Consensus
 	err error
 }
@@ -118,18 +119,19 @@ func NewPackReader(filename string) (p *PackReader) {
 		}
 	}
 	return &PackReader{
-		rc: f,
+		rd: bufio.NewReaderSize(f, 1024*1024*100),
+		cl: f,
 	}
 }
 
 func (p *PackReader) Load() bool {
 	var hdr PackedConsensusHdr
-	if err := binary.Read(p.rc, binary.BigEndian, &hdr); err == io.EOF {
-		p.rc.Close()
+	if err := binary.Read(p.rd, binary.BigEndian, &hdr); err == io.EOF {
+		p.cl.Close()
 		return false
 	} else if err != nil {
 		p.err = err
-		p.rc.Close()
+		p.cl.Close()
 		return false
 	}
 	p.c = &Consensus{
@@ -137,10 +139,10 @@ func (p *PackReader) Load() bool {
 		K:    make([]Hash, hdr.Len),
 	}
 	for i := int32(0); i < hdr.Len; i++ {
-		_, err := io.ReadFull(p.rc, p.c.K[i][:])
+		_, err := io.ReadFull(p.rd, p.c.K[i][:])
 		if err != nil {
 			p.err = err
-			p.rc.Close()
+			p.cl.Close()
 			return false
 		}
 	}
