@@ -20,6 +20,7 @@ type Consensus struct {
 	Filename string
 	Error    error
 	K        []Hash
+	IP       []string
 }
 
 // ReadConsensuses reads consensus files from a folder structure like
@@ -31,16 +32,12 @@ func ReadConsensuses(dir string, since, until Hour) chan *Consensus {
 		for h := since; h <= until; h++ {
 			filename := HourToTime(h).Format(consensusFilename)
 			filename = filepath.Join(dir, filename)
-			c := &Consensus{
-				Time:     h,
-				Filename: filename,
-			}
 
-			keys, err := ParseConsensus(filename)
+			c, err := ParseConsensus(filename)
 			if err != nil {
-				c.Error = err
+				c = &Consensus{Error: err}
 			} else {
-				c.K = keys
+				c.Time = h
 			}
 
 			ch <- c
@@ -51,21 +48,23 @@ func ReadConsensuses(dir string, since, until Hour) chan *Consensus {
 }
 
 // ParseConsensus parses a consensus file and extracts the HSDir Hashring
-func ParseConsensus(filename string) ([]Hash, error) {
+func ParseConsensus(filename string) (*Consensus, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	var fingerprint string
-	var keys []Hash
+	var fingerprint, ip string
+	c := &Consensus{Filename: filename}
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(bufio.NewReaderSize(f, 2000000))
 	for scanner.Scan() {
 		b := scanner.Bytes()
 
 		if bytes.Equal(b[:2], []byte("r ")) {
-			fingerprint = string(bytes.SplitN(b, []byte(" "), 4)[2])
+			parts := bytes.Split(b, []byte(" "))
+			fingerprint = string(parts[2])
+			ip = string(parts[6])
 			continue
 		}
 
@@ -76,14 +75,15 @@ func ParseConsensus(filename string) ([]Hash, error) {
 			}
 			var k Hash
 			copy(k[len(k)-len(f):], f)
-			keys = append(keys, k)
+			c.K = append(c.K, k)
+			c.IP = append(c.IP, ip)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
 
-	return keys, nil
+	return c, nil
 }
 
 type PackedConsensusHdr struct {

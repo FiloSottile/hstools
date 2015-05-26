@@ -5,12 +5,20 @@ package main
 import (
 	"hstools"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
-	"runtime/pprof"
+	"runtime"
 	"time"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	if len(os.Args) != 4 {
 		log.Fatal("usage: preprocess /data/dir/ 2014-01-01-00 2014-01-31-23")
 	}
@@ -33,12 +41,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pprofF, err := os.Create("preprocess.pprof")
-	if err != nil {
-		log.Fatal(err)
-	}
-	pprof.StartCPUProfile(pprofF)
-
 	ch := hstools.ReadConsensuses(os.Args[1],
 		hstools.Hour(since.Unix()/3600), hstools.Hour(until.Unix()/3600))
 	for c := range ch {
@@ -60,16 +62,15 @@ func main() {
 			log.Fatal(err)
 		}
 
-		if err := keysDB.Seen(c.K, c.Time); err != nil {
-			log.Fatal(err)
-		}
+		keysDB.Seen(c.K, c.IP, c.Time)
 
 		log.Println(c.Filename, len(c.K))
 	}
 
-	pprof.StopCPUProfile()
-
 	if err := keysDB.Close(); err != nil {
+		log.Fatal(err)
+	}
+	if err := pckFile.Close(); err != nil {
 		log.Fatal(err)
 	}
 }

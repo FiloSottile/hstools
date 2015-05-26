@@ -1,7 +1,10 @@
 package hstools
 
 import (
+	"bytes"
 	"encoding/json"
+	"log"
+	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -9,6 +12,11 @@ import (
 type KeyMeta struct {
 	FirstSeen Hour
 	LastSeen  Hour
+	IPs       []string
+}
+
+type IPMeta struct {
+	Keys [][]byte
 }
 
 type KeysDB struct {
@@ -23,9 +31,16 @@ func OpenKeysDb(filename string) (*KeysDB, error) {
 		return nil, err
 	}
 
+	d.db.MaxBatchDelay = 5 * time.Second
+
 	if err = d.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("Keys"))
-		return err
+		if _, err := tx.CreateBucketIfNotExists([]byte("Keys")); err != nil {
+			return err
+		}
+		if _, err := tx.CreateBucketIfNotExists([]byte("IPs")); err != nil {
+			return err
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
@@ -33,14 +48,16 @@ func OpenKeysDb(filename string) (*KeysDB, error) {
 	return d, nil
 }
 
-func (d *KeysDB) Seen(keys []Hash, h Hour) error {
-	return d.db.Update(func(tx *bolt.Tx) error {
-		for _, k := range keys {
+func (d *KeysDB) Seen(keys []Hash, ips []string, h Hour) {
+	fn := func(tx *bolt.Tx) error {
+		for i, k := range keys {
+			ip := ips[i]
 			b := tx.Bucket([]byte("Keys"))
 			oldJSON := b.Get(k[:])
 			meta := KeyMeta{
 				FirstSeen: h,
 				LastSeen:  h,
+				IPs:       []string{ip},
 			}
 			if oldJSON != nil {
 				var oldMeta KeyMeta
@@ -53,6 +70,11 @@ func (d *KeysDB) Seen(keys []Hash, h Hour) error {
 				if oldMeta.LastSeen > meta.LastSeen {
 					meta.LastSeen = oldMeta.LastSeen
 				}
+				for _, oldIP := range oldMeta.IPs {
+					if oldIP != ip {
+						meta.IPs = append(meta.IPs, oldIP)
+					}
+				}
 			}
 			encoded, err := json.Marshal(meta)
 			if err != nil {
@@ -61,9 +83,40 @@ func (d *KeysDB) Seen(keys []Hash, h Hour) error {
 			if err := b.Put(k[:], encoded); err != nil {
 				return err
 			}
+
+			b = tx.Bucket([]byte("IPs"))
+			oldJSON = b.Get([]byte(ip))
+			ipMeta := IPMeta{
+				Keys: [][]byte{k[:]},
+			}
+			if oldJSON != nil {
+				var oldMeta IPMeta
+				if err := json.Unmarshal(oldJSON, &oldMeta); err != nil {
+					return err
+				}
+				for _, oldKey := range oldMeta.Keys {
+					if !bytes.Equal(oldKey, k[:]) {
+						ipMeta.Keys = append(ipMeta.Keys, oldKey)
+					}
+				}
+			}
+			encoded, err = json.Marshal(ipMeta)
+			if err != nil {
+				return err
+			}
+			if err := b.Put([]byte(ip), encoded); err != nil {
+				return err
+			}
 		}
 		return nil
-	})
+	}
+	go func() {
+		if err := d.db.Batch(fn); err != nil {
+			log.Fatal(err)
+		} else {
+			log.Println("recorded", HourToTime(h))
+		}
+	}()
 }
 
 func (d *KeysDB) Lookup(key Hash) (res KeyMeta, err error) {
@@ -76,6 +129,10 @@ func (d *KeysDB) Lookup(key Hash) (res KeyMeta, err error) {
 		return nil
 	})
 	return
+}
+
+func (d *KeysDB) View(fn func(tx *bolt.Tx) error) error {
+	return d.db.View(fn)
 }
 
 func (d *KeysDB) Close() error {

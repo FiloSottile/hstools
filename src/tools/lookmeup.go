@@ -41,9 +41,9 @@ func main() {
 	log.Println("[*] Your node is", hstools.ToHex(hash[:]))
 
 	log.Println("[*] Loading consensus...")
-	keys, err := hstools.ParseConsensus(os.Args[1])
+	c, err := hstools.ParseConsensus(os.Args[1])
 	fatalIfErr(err)
-	hashring := hstools.NewHashring(hstools.HashesToIntSlice(keys))
+	hashring := hstools.NewHashring(hstools.HashesToIntSlice(c.K))
 	hsDirInt := hashring.Prev(new(big.Int).SetBytes(hash[:])) // first HSDir
 	hsDirInt = hashring.Prev(hsDirInt)                        // second HSDir
 	hsDirInt = hashring.Prev(hsDirInt)                        // third HSDir

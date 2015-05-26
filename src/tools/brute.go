@@ -49,9 +49,9 @@ func main() {
 
 	log.Println("[*] Loading consensus...")
 	// Note: this should maybe also consider potential future HSDir
-	keys, err := hstools.ParseConsensus(os.Args[1])
+	c, err := hstools.ParseConsensus(os.Args[1])
 	fatalIfErr(err)
-	hashring := hstools.NewHashring(hstools.HashesToIntSlice(keys))
+	hashring := hstools.NewHashring(hstools.HashesToIntSlice(c.K))
 	nextA := hstools.IntToHash(hashring.Next(new(big.Int).SetBytes(keyA[:])))
 	nextB := hstools.IntToHash(hashring.Next(new(big.Int).SetBytes(keyB[:])))
 	log.Println("    First HSDir A:", hstools.ToHex(nextA[:]))
