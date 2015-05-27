@@ -53,24 +53,10 @@ func main() {
 			}
 		case "colocated":
 			c := tx.Bucket([]byte("Keys")).Cursor()
-			for k, v := c.First(); k != nil; k, v = c.Next() {
-				var res hstools.KeyMeta
-				colocated := make(map[string]struct{})
-				if err := json.Unmarshal(v, &res); err != nil {
-					log.Fatal(err)
-				}
-				for _, ip := range res.IPs {
-					ipMetaJSON := tx.Bucket([]byte("IPs")).Get([]byte(ip))
-					var ipMeta hstools.IPMeta
-					if err := json.Unmarshal(ipMetaJSON, &ipMeta); err != nil {
-						log.Fatal(err)
-					}
-					for _, key := range ipMeta.Keys {
-						colocated[hstools.ToHex(key)] = struct{}{}
-					}
-				}
+			for k, _ := c.First(); k != nil; k, _ = c.Next() {
+				coloNum, ips := hstools.ColocatedKeys(k, keysDB)
 				fmt.Printf("%d keys on %d IPs - %s %v\n",
-					len(colocated), len(res.IPs), hstools.ToHex(k), res.IPs)
+					coloNum, len(ips), hstools.ToHex(k), ips)
 			}
 		default:
 			log.Fatal("usage: curiosity keys.db {ip,key,colocated}")

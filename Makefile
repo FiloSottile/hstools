@@ -1,6 +1,6 @@
 .PHONY: test clean all
-.PHONY: preprocess brute lookmeup announce grind curiosity montecarlo
-all:    preprocess brute lookmeup announce grind curiosity
+.PHONY: preprocess brute lookmeup announce grind curiosity scavenge montecarlo
+all:    preprocess brute lookmeup announce grind curiosity scavenge
 
 GO ?= go
 
@@ -24,6 +24,9 @@ grind:
 
 curiosity:
 	GOPATH="$(CURDIR)" $(GO) build -o bin/curiosity src/tools/curiosity.go
+
+scavenge:
+	GOPATH="$(CURDIR)" $(GO) build -o bin/scavenge src/tools/scavenge.go
 
 test:
 	GOPATH="$(CURDIR)" $(GO) test hstools -race -v -short

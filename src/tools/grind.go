@@ -1,11 +1,14 @@
 // +build manually
 
+// grind: compute the average distance to 1st and 4th node and its average
+// deviation and output it as JSON lines
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"hstools"
 	"log"
-	"math/big"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -25,52 +28,27 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	if len(os.Args) < 3 {
-		log.Fatal("usage: grind pckcns.dat keys.db")
+	if len(os.Args) != 2 {
+		log.Fatal("usage: grind pckcns.dat > stats.jsonl")
 	}
 
-	keysDB, err := hstools.OpenKeysDb(os.Args[2])
-	fatalIfErr(err)
-
-	skipped := 0
+	w := bufio.NewWriterSize(os.Stdout, 1024*1024)
+	jsonEncoder := json.NewEncoder(w)
 	r := hstools.NewPackReader(os.Args[1])
-	for r.Load() {
-		if skipped < 24*30 {
-			skipped++
-			continue
-		}
-
+	for i := 0; r.Load(); i++ {
 		c := r.Consensus()
 		h := hstools.NewHashring(hstools.HashesToIntSlice(c.K))
-		data, err := h.AgeData(c.Time, keysDB)
-		fatalIfErr(err)
-		res := hstools.AnalyzePartitionData(data)
 
-		log.Println(hstools.HourToTime(c.Time))
-		log.Println("################   MAX", hstools.Score(big.NewInt(0), res))
-		log.Println("################   MAX", hstools.Score(big.NewInt(4*24), res))
+		fatalIfErr(jsonEncoder.Encode(hstools.AnalyzedConsensus{
+			T:         c.Time,
+			Distance:  hstools.AnalyzePartitionData(h.DistanceData()),
+			Distance4: hstools.AnalyzePartitionData(h.Distance4Data()),
+		}))
 
-		desc, err := hstools.OnionToDescID("silkroadvb5piz3r.onion", hstools.HourToTime(c.Time))
-		fatalIfErr(err)
-		v, err := h.Age(new(big.Int).SetBytes(desc[0]), c.Time, keysDB)
-		fatalIfErr(err)
-		score := hstools.Score(big.NewInt(int64(v)), res)
-		log.Println("AVG", res.Mean, "OUR", v, "SCORE", score)
-
-		desc, err = hstools.OnionToDescID("facebookcorewwwi.onion", hstools.HourToTime(c.Time))
-		fatalIfErr(err)
-		v, err = h.Age(new(big.Int).SetBytes(desc[0]), c.Time, keysDB)
-		fatalIfErr(err)
-		score = hstools.Score(big.NewInt(int64(v)), res)
-		log.Println("AVG", res.Mean, "OUR", v, "SCORE", score)
-
-		// if score > 230 {
-		// 	log.Println(hstools.HourToTime(c.Time), h.Len(), "facebookcorewwwi.onion", score)
-		// }
-
-		log.Println()
+		if i%1000 == 0 {
+			log.Println(hstools.HourToTime(c.Time))
+		}
 	}
-	if err := r.Err(); err != nil {
-		log.Fatal(err)
-	}
+	fatalIfErr(r.Err())
+	fatalIfErr(w.Flush())
 }

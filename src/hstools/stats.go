@@ -1,10 +1,22 @@
 package hstools
 
-import "math/big"
+import (
+	"encoding/json"
+	"log"
+	"math/big"
+
+	"github.com/boltdb/bolt"
+)
 
 type MetricData struct {
 	Mean   *big.Int
 	AbsDev *big.Int
+}
+
+type AnalyzedConsensus struct {
+	T         Hour
+	Distance  *MetricData
+	Distance4 *MetricData
 }
 
 type PartitionData struct {
@@ -83,7 +95,9 @@ func bigAbsDev(nums []*big.Int, mean *big.Int) *big.Int {
 	return bigMean(devs)
 }
 
-const ROUNDS = 1000000
+// The SampleX functions have been replaced by the analytical (not random)
+// XData + AnalyzePartitionData functions
+const ROUNDS = 100000
 
 func (h *Hashring) Distance(p *big.Int) *big.Int {
 	return h.Diff(p, h.Next(p))
@@ -165,10 +179,10 @@ func AnalyzePartitionData(data []*PartitionData) *MetricData {
 			w.Div(w.Mul(w, part.l), HashringLimit)
 			m.AbsDev.Add(m.AbsDev, w)
 		} else {
-			// Assumes l = x1 - x0 and x1 < x0
-			if part.l.Cmp(new(big.Int).Add(part.x0, part.x1)) != 0 ||
-				part.x1.Cmp(part.x0) >= 0 {
-				panic("wrong")
+			// Assumes l = x0 - x1 and x0 > x1
+			if part.l.Cmp(new(big.Int).Sub(part.x0, part.x1)) != 0 ||
+				!(part.x0.Cmp(part.x1) > 0) {
+				log.Fatal(part.l, part.x0, part.x1)
 			}
 			d1.Abs(d1)
 
@@ -203,6 +217,29 @@ func (h *Hashring) Age(p *big.Int, now Hour, keysDB *KeysDB) (Hour, error) {
 	return res / 3, nil
 }
 
+func (h *Hashring) Longevity(p *big.Int, now Hour, keysDB *KeysDB) (Hour, error) {
+	var res Hour
+	for _, p := range h.Next3(p) {
+		v, err := keysDB.Lookup(IntToHash(p))
+		if err != nil {
+			return 0, err
+		}
+		res += v.LastSeen - now
+	}
+	return res / 3, nil
+}
+
+func (h *Hashring) Colocated(p *big.Int, keysDB *KeysDB) int {
+	var tot int
+	for _, p := range h.Next3(p) {
+		h := IntToHash(p)
+		n, _ := ColocatedKeys(h[:], keysDB)
+		tot += n
+	}
+	return tot - 3
+}
+
+// AgeData is not really in use, Age and Longevity are assessed in absolute
 func (h *Hashring) AgeData(now Hour, keysDB *KeysDB) (res []*PartitionData, err error) {
 	for i, p := range h.points {
 		age, err := h.Age(p, now, keysDB)
@@ -213,6 +250,33 @@ func (h *Hashring) AgeData(now Hour, keysDB *KeysDB) (res []*PartitionData, err 
 		res = append(res, &PartitionData{
 			x0: big.NewInt(int64(age)), x1: big.NewInt(int64(age)), l: l,
 		})
+	}
+	return
+}
+
+func ColocatedKeys(k []byte, keysDB *KeysDB) (coloNum int, ips []string) {
+	if err := keysDB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Keys"))
+		var res KeyMeta
+		if err := json.Unmarshal(b.Get(k), &res); err != nil {
+			return err
+		}
+		colocated := make(map[string]struct{})
+		for _, ip := range res.IPs {
+			ipMetaJSON := tx.Bucket([]byte("IPs")).Get([]byte(ip))
+			var ipMeta IPMeta
+			if err := json.Unmarshal(ipMetaJSON, &ipMeta); err != nil {
+				return err
+			}
+			for _, key := range ipMeta.Keys {
+				colocated[ToHex(key)] = struct{}{}
+			}
+		}
+		ips = res.IPs
+		coloNum = len(colocated)
+		return nil
+	}); err != nil {
+		log.Fatal(err)
 	}
 	return
 }
