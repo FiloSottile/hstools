@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+
+    <title>WebSocket Test</title>
+    <script language="javascript" type="text/javascript">
+        var wsUri = [
+            "wss://" + IP + "/announce",
+            "wss://" + IP + "/announce",
+            "wss://" + IP + "/announce"
+        ];
+
+        var num = 0;
+
+        function init() {
+            document.getElementById('num').innerHTML = num;
+            console.log("_o/");
+            for (var i = wsUri.length - 1; i >= 0; i--) {
+                console.log(wsUri[i]);
+                websocket = new WebSocket(wsUri[i]);
+                websocket.onopen = function(evt) {
+                    console.log("open");
+                    this.send(window.location.hash.substr(1));
+                };
+                websocket.onclose = function(evt) {
+                    window.location.reload();
+                };
+                websocket.onmessage = function(evt) {
+                    onMessage(evt)
+                };
+                websocket.onerror = function(evt) {
+                    console.log(evt.data);
+                    window.location.reload();
+                };
+            };
+        }
+
+        function onMessage(evt) {
+            num++;
+            document.getElementById('num').innerHTML = num;
+            document.getElementsByTagName('body')[0].className = "on";
+            console.log("on");
+            setTimeout(function(){
+                console.log("off");
+                document.getElementsByTagName('body')[0].className = "off";
+            }, 500);
+        }
+
+        window.onload = init;
+    </script>
+    <style>
+    .on {
+        background-color: black;
+    }
+    #num {
+      color: red;
+      font-size: 700px;
+      text-align: center;
+      font-family: sans-serif;
+    }
+    </style>
+</head>
+
+<body>
+<div id="num"></div>
+</body>
+</html>

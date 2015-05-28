@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"hstools"
 	"io"
 	"log"
@@ -15,59 +14,6 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-var html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-
-    <title>WebSocket Test</title>
-    <script language="javascript" type="text/javascript">
-        var wsUri = "wss://" + window.location.host + "/announce";
-
-        function init() {
-            websocket = new WebSocket(wsUri);
-            websocket.onopen = function(evt) {
-                websocket.send(window.location.hash.substr(1));
-            };
-            websocket.onclose = function(evt) {
-                window.location.reload();
-            };
-            websocket.onmessage = function(evt) {
-                onMessage(evt)
-            };
-            websocket.onerror = function(evt) {
-                console.log(evt.data);
-                window.location.reload();
-            };
-        }
-
-        function onMessage(evt) {
-            document.getElementsByTagName('body')[0].className = "on";
-            console.log("on");
-            setTimeout(function(){
-                console.log("off");
-                document.getElementsByTagName('body')[0].className = "off";
-            }, 500);
-        }
-
-        window.addEventListener("load", init, false);
-    </script>
-    <style>
-    .on {
-        background-color: black;
-    }
-    </style>
-</head>
-
-<body></body>
-</html>
-`
-
-func HTMLServer(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, html)
-}
-
 var channelsLock sync.RWMutex
 var channels = make(map[*websocket.Conn]chan string)
 
@@ -77,6 +23,13 @@ func WSServer(ws *websocket.Conn) {
 		log.Println(err)
 		return
 	}
+	log.Printf("%s", string(onion))
+	res, err := hstools.OnionToDescID(string(onion), time.Now())
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	log.Printf("%s %s", hstools.ToBase32(res[0]), hstools.ToBase32(res[1]))
 	announce := make(chan string)
 	channelsLock.Lock()
 	channels[ws] = announce
@@ -87,11 +40,6 @@ func WSServer(ws *websocket.Conn) {
 		channelsLock.Unlock()
 	}()
 	for desc := range announce {
-		res, err := hstools.OnionToDescID(string(onion), time.Now())
-		if err != nil {
-			log.Println(err)
-			return
-		}
 		if hstools.ToBase32(res[0]) != desc && hstools.ToBase32(res[1]) != desc {
 			continue
 		}
@@ -108,10 +56,9 @@ func main() {
 		log.Fatal("usage: announce cert.pem key.pem logfile")
 	}
 
-	http.Handle("/", http.HandlerFunc(HTMLServer))
 	http.Handle("/announce", websocket.Handler(WSServer))
 	go func() {
-		log.Fatal(http.ListenAndServeTLS(":14242", os.Args[1], os.Args[2], nil))
+		log.Fatal(http.ListenAndServeTLS("0.0.0.0:14242", os.Args[1], os.Args[2], nil))
 	}()
 
 	t, err := tail.TailFile(os.Args[3], tail.Config{
