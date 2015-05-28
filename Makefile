@@ -5,28 +5,28 @@ all:    preprocess brute lookmeup announce grind curiosity scrolls
 GO ?= go
 
 montecarlo:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/montecarlo src/tools/montecarlo.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/montecarlo src/cmd/montecarlo.go
 
 preprocess:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/preprocess src/tools/preprocess.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/preprocess src/cmd/preprocess.go
 
 brute:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/brute src/tools/brute.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/brute src/cmd/brute.go
 
 lookmeup:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/lookmeup src/tools/lookmeup.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/lookmeup src/cmd/lookmeup.go
 
 announce:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/announce src/tools/announce.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/announce src/cmd/announce.go
 
 grind:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/grind src/tools/grind.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/grind src/cmd/grind.go
 
 curiosity:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/curiosity src/tools/curiosity.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/curiosity src/cmd/curiosity.go
 
 scrolls:
-	GOPATH="$(CURDIR)" $(GO) build -o bin/scrolls src/tools/scrolls.go
+	GOPATH="$(CURDIR)" $(GO) build -o bin/scrolls src/cmd/scrolls.go
 
 test:
 	GOPATH="$(CURDIR)" $(GO) test hstools -race -v -short

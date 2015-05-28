@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseConsensus(t *testing.T) {
-	c, err := ParseConsensus("../../test/2015-04-11-19-00-00-consensus")
+	c, err := ParseConsensus("../../misc/2015-04-11-19-00-00-consensus")
 	if err != nil {
 		t.Fatal(err)
 	}

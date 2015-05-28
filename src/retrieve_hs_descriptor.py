@@ -1,10 +1,8 @@
 """
-Retrieve hidden service descriptors from the
-responsible HSDir's. This is a very rough
-first copy and probably has bugs.
+List a Hidden Service HSDir for a given consensus or at the current instant.
 
 - Donncha O'Cearbhaill - donncha@donncha.is
-  PGP: 0xAEC10762
+- Filippo Valsorda
 """
 
 from time import mktime, time
@@ -15,10 +13,6 @@ from stem.descriptor import parse_file, DocumentHandler
 from stem.descriptor.remote import DescriptorDownloader
 import argparse
 from bisect import bisect_left
-
-# When provided with a Tor hidden service 'service_id', this script should output
-# the predicted desc_id's which will be used to publish the HS descriptors for this
-# HS into the future.
 
 # Returns base_32 encode desc_id - descriptor-id = H(permanent-id | H(time-period | descriptor-cookie | replica))
 def rend_compute_v2_desc_id(service_id_base32, replica, time, descriptor_cookie = ""):#
