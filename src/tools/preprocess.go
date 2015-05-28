@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -41,6 +42,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	wg := &sync.WaitGroup{}
+
 	ch := hstools.ReadConsensuses(os.Args[1],
 		hstools.Hour(since.Unix()/3600), hstools.Hour(until.Unix()/3600))
 	for c := range ch {
@@ -49,24 +52,16 @@ func main() {
 			continue
 		}
 
-		// desc, err := hstools.OnionToDescID("facebookcorewwwi.onion",
-		// 	time.Unix(int64(c.Time*3600), 0))
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// d := hstools.ToHex(c.H.Distance(new(big.Int).SetBytes(desc[0])).Bytes())
-		// n := hstools.ToHex(c.H.Next(new(big.Int).SetBytes(desc[0])).Bytes())
-		// strings.Repeat("0", 40-len(d))+d
-
 		if err := hstools.WritePackedConsensus(pckFile, c); err != nil {
 			log.Fatal(err)
 		}
 
-		keysDB.Seen(c.K, c.IP, c.Time)
+		keysDB.Seen(c.K, c.IP, c.Time, wg)
 
 		log.Println(c.Filename, len(c.K))
 	}
 
+	wg.Wait()
 	if err := keysDB.Close(); err != nil {
 		log.Fatal(err)
 	}

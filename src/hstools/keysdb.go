@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -48,7 +49,7 @@ func OpenKeysDb(filename string) (*KeysDB, error) {
 	return d, nil
 }
 
-func (d *KeysDB) Seen(keys []Hash, ips []string, h Hour) {
+func (d *KeysDB) Seen(keys []Hash, ips []string, h Hour, wg *sync.WaitGroup) {
 	fn := func(tx *bolt.Tx) error {
 		for i, k := range keys {
 			ip := ips[i]
@@ -111,10 +112,12 @@ func (d *KeysDB) Seen(keys []Hash, ips []string, h Hour) {
 		return nil
 	}
 	go func() {
+		wg.Add(1)
 		if err := d.db.Batch(fn); err != nil {
 			log.Fatal(err)
 		} else {
 			log.Println("recorded", HourToTime(h))
+			wg.Done()
 		}
 	}()
 }

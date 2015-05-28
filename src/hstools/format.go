@@ -67,6 +67,17 @@ func HashesToIntSlice(keys []Hash) []*big.Int {
 	return ints
 }
 
+func IntsToHashSlice(ints []*big.Int) []*Hash {
+	hashes := make([]*Hash, len(ints))
+	for n, i := range ints {
+		var k Hash
+		b := i.Bytes()
+		copy(k[len(k)-len(b):], b)
+		hashes[n] = &k
+	}
+	return hashes
+}
+
 func IntToHash(i *big.Int) Hash {
 	var k Hash
 	b := i.Bytes()

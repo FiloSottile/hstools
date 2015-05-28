@@ -16,3 +16,6 @@
 [submodule "src/golang.org/x/net"]
 	path = src/golang.org/x/net
 	url = https://go.googlesource.com/net
+[submodule "src/github.com/mgutz/ansi"]
+	path = src/github.com/mgutz/ansi
+	url = https://github.com/mgutz/ansi
